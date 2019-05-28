@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 using OtpWebCore2.Models;
 using OtpWebCore2.Models.ManageViewModels;
 using OtpWebCore2.Services;
@@ -25,6 +27,7 @@ namespace OtpWebCore2.Controllers
         private readonly IEmailSender _emailSender;
         private readonly ILogger _logger;
         private readonly UrlEncoder _urlEncoder;
+        private const string OtpApiAddress = "http://localhost:58241/api/otp";
 
         private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
         private const string RecoveryCodesKey = nameof(RecoveryCodesKey);
@@ -158,24 +161,51 @@ namespace OtpWebCore2.Controllers
                 return View(model);
             }
 
+            // достал текущего юзера
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
                 throw new ApplicationException($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
-            var changePasswordResult = await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
-            if (!changePasswordResult.Succeeded)
+            
+            var authResult = new Microsoft.AspNetCore.Identity.SignInResult();
+
+            using (var client = new HttpClient())
             {
-                AddErrors(changePasswordResult);
-                return View(model);
+                var message = new JObject
+                {
+                    {"otp", model.Otp},
+                    {"userId", user.Id}
+                };
+
+                var otpResult = await client.PostAsync(OtpApiAddress,
+                    new StringContent(message.ToString(), Encoding.UTF8, "application/json"));
+
+                if (otpResult.Content.ReadAsStringAsync().Result.Equals("200"))
+                {
+
+                    var changePasswordResult = await _userManager.ChangePasswordAsync(user, model.OldPassword, model.NewPassword);
+                    if (!changePasswordResult.Succeeded)
+                    {
+                        AddErrors(changePasswordResult);
+                        return View(model);
+                    }
+
+                    await _signInManager.SignInAsync(user, isPersistent: false);
+                    _logger.LogInformation("User changed their password successfully.");
+                    StatusMessage = "Your password has been changed.";
+
+                    return RedirectToAction(nameof(ChangePassword));
+                }
+                    
+                else
+                {
+                    return View(model);
+                }
+
             }
 
-            await _signInManager.SignInAsync(user, isPersistent: false);
-            _logger.LogInformation("User changed their password successfully.");
-            StatusMessage = "Your password has been changed.";
-
-            return RedirectToAction(nameof(ChangePassword));
         }
 
         [HttpGet]

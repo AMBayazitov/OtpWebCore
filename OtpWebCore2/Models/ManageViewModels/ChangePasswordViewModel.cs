@@ -25,5 +25,10 @@ namespace OtpWebCore2.Models.ManageViewModels
         public string ConfirmPassword { get; set; }
 
         public string StatusMessage { get; set; }
+
+        [Required]
+        [DataType(DataType.Text)]
+        [Display(Name = "Enter One-Time password")]
+        public string Otp { get; set; }
     }
 }

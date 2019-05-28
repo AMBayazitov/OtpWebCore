@@ -47,6 +47,30 @@ namespace OtpWebCore2.Controllers
         [TempData]
         public string ErrorMessage { get; set; }
 
+        //[HttpPost]
+        //[AllowAnonymous]
+        //public async Task<IActionResult> MobileAuth([FromBody] LoginViewModel model)
+        //{
+        //    var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe,
+        //        lockoutOnFailure: false);
+        //    if (result.Succeeded)
+        //    {
+        //        _logger.LogInformation("User logged in.");
+        //        return ;
+        //    }
+        //    if (result.IsLockedOut)
+        //    {
+        //        _logger.LogWarning("User account locked out.");
+        //        return RedirectToAction(nameof(Lockout));
+        //    }
+        //    else
+        //    {
+        //        ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+        //        return View(model);
+        //    }
+
+        //}
+
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> Login(string returnUrl = null)
